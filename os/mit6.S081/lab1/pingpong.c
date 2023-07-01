@@ -3,42 +3,28 @@
 #include "user/user.h"
 
 int main(){
-    int pid;
-    int p[2]; //0=> read 1->write
+    int p[2];
     pipe(p);
-
-    if (fork() == 0){
-        char buf[16];
-        // child => receive->send
-        pid =getpid();
-        if (read(p[0],buf,15) == -1){
-            fprintf(2,"Child receive message failed!!");
-            exit(1);
-        }
-        close(p[0]); //Warning: remember close unuse fd
-        printf("%d: received ping\n",pid);
-        if (write(p[1],buf,sizeof(buf)) == -1){
-            fprintf(2,"Child send message failed!!");
-            exit(1);
-        }
+    int fid,cid;
+    char cbuf[2],fbuf[2];
+    if (fork()==0){
+        // child
+        cid =getpid();
+        read(p[0],cbuf,1); //block
+        close(p[0]);
+        printf("%d: received ping\n",cid);
+        write(p[1],cbuf,1);
         close(p[1]);
         exit(0);
     }else{
-        // father => send->receive
-        char buf[15];
-        pid =getpid();
-        if (write(p[1],"Hello World!!",13) == -1){
-            fprintf(2,"Father send message failed!!");
-            exit(1);
-        }
-        close(p[1]);
-        wait(0); 
-        if (read(p[0],buf,15) == -1){
-            fprintf(2,"Father receive message failed!!");
-            exit(1);
-        }
-        printf("%d: received pong\n",pid);
+        // father
+        fid =getpid();
+        write(p[1],"y",1);
+        wait(0); //等待子进程的写入，不然会自读自写
+        read(p[0],fbuf,1); 
+        printf("%d: received pong\n",fid);
         close(p[0]);
+        close(p[1]);
         exit(0);
     }
 }

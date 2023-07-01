@@ -1,59 +1,68 @@
-/**
- * reference: https://swtch.com/~rsc/thread/
-*/
 #include "kernel/types.h"
 #include "kernel/stat.h"
 #include "user/user.h"
-
-void new_proc(int p[2]){
-    int base;
-    int primes;
-    int flag;
+/*
+每一个子进程的执行都依赖于上一级进程的输入
+*/
+void print_primes(int *p)
+{
     close(p[1]);
-    //first number must be primes
-    if (read(p[0],&base,4) !=4 ){
-        fprintf(2,"Receive number failed!!");
-        exit(1);
-    } 
-    printf("prime: %d\n",base);
-    // unfiltered numbers exit or not?
-    flag =read(p[0],&primes,4);
-    if (flag){ //if there are still unfiltered numbers
-        int newp[2];
-        pipe(newp);
-        if (fork()==0){
-            new_proc(newp);
-        }else{
-            close(newp[0]);
-            if (primes % base) write(newp[1], &primes, 4); //lazy to handle error boundary
-            while (read(p[0],&primes,4)){
-                 if (primes % base) write(newp[1], &primes, 4);
-            }
-            close(p[0]);
-            close(newp[1]);
-            wait(0);
-            // exit(0); //Error
-        }
+    int cp[2];
+    pipe(cp);
+    int prime, target;
+    // 递归结束条件
+    if (read(p[0], &prime, 4) == 0)
+    {
+        close(p[0]);
+        close(cp[0]);
+        close(cp[1]);
+        exit(0);
     }
-    exit(0);
-};
-
-int main(){
-    int p[2];
-    pipe(p);
-    if (fork()==0){
-        new_proc(p);
-    }else{
-        close(p[0]); //unuse
-        for (int i=2;i<=35;i++){
-            if (write(p[1],&i,4) != 4){
-                fprintf(2,"Send number failed!!");
-                exit(1);
+    else
+    {
+        printf("prime %d\n", prime); // first must be prime
+    }
+    if (fork() == 0)
+    {
+        print_primes(cp);
+    }
+    else
+    {
+        while (read(p[0], &target, 4) != 0)
+        {
+            // printf("target: %d\n", target);
+            if (target % prime != 0)
+            { // target不是prime倍数，传给子进程
+                write(cp[1], &target, 4);
             }
         }
-        close(p[1]);
+        close(p[0]);
+        close(cp[1]);
         wait(0);
         exit(0);
     }
+};
+
+int main()
+{
+    int p[2];
+    pipe(p);
+    if (fork() == 0)
+    {
+        // child;
+        print_primes(p);
+    }
+    else
+    {
+        close(p[0]);
+        // father(generate process)
+        for (int i = 2; i <= 35; i++)
+        {
+            write(p[1], &i, 4); // 指针类型
+        }
+        close(p[1]);
+        wait(0); // 每一个父进程都在子进程结束后结束
+        exit(0);
+    }
     return 0;
-}
+};

@@ -11,4 +11,8 @@ git checkout util
 sudo make qemu
 ```
 
+## Problem 
+
+[Ubuntu 22.04编译卡死](https://zhuanlan.zhihu.com/p/537461426)
+
 
